@@ -1,0 +1,74 @@
+# Dashboard Sepsis
+# Cristian Toro
+
+# 0. Setup
+import dash
+import dash_core_components as dcc
+import dash_html_components as html
+import plotly.graph_objs as go
+from dash.dependencies import Input, Output
+import pandas as pd
+
+# 1. DataPacientes
+csv_path = 'C:/Users/Cristian Toro/Desktop/Data utilizada para el modelo/Pacientes completos 120-220 Horas/PC120_220C.csv'
+DataPacientes = pd.read_csv(csv_path, sep=',')
+DataPacientes.rename({"Unnamed: 0":"a"}, axis="columns", inplace=True)
+DataPacientes.drop(["a"], axis=1, inplace=True)
+DataPacientes.Respiracion = DataPacientes.Respiracion.replace(["No valido"], -1)
+DataPacientes.astype({'Respiracion':'float64'}).dtypes
+
+# 2. Formats and templates
+external_stylesheets = ['https://codepen.io/chriddyo/pen/bWLwgP.css']
+tickFont = {'size':9, 'color':'rgb(30,30,30)'}
+
+
+# 3. Generar la lista de pacientes
+pacientes = DataPacientes['Paciente'].unique()
+pacientes.sort()
+options = [{'label': i, 'value': i} for i in pacientes]
+
+
+# 4. Dashboard layout
+app = dash.Dash()
+app.title = 'Sepsis Dashboard'
+
+app.layout = html.Div([
+
+    # Header 
+    html.H1('Control de pacientes hospitalizados'),
+    #Dropdown
+    html.Div( 
+        dcc.Dropdown(
+            id = 'paciente-picker',
+            options = options,
+            value = 'p000009'
+        ),
+        style={'width':'20%'}
+    ),
+
+    #plot
+    dcc.Graph(
+        id = 'laboratorio-cases',
+        config = {'displayModebar': False}
+    )
+
+]) #end layout
+
+
+@app.callback(Output(component_id='laboratorio-cases', component_property= 'figure'),
+             [Input(component_id= 'paciente-picker', component_property = 'value')])
+
+def update_bar_chart(selected_paciente):
+
+    filtered_df = DataPacientes[DataPacientes['Paciente'] == selected_paciente]
+    fig = go.Figure(DataPacientes=[
+          go.Bar(name = 'HR', x=filtered_df['Hora'], y=filtered_df['HR'], marker_color = 'firebrick')
+    ])
+    fig.update_layout(
+        title= 'HR para el paciente {}'.format(selected_paciente),
+        xaxis= dict(tickangle = -90, ticktext = DataPacientes.Hora, tickFont= tickFont, type = 'category'))
+
+    return fig
+
+app.run_server()
+
